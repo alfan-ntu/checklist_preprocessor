@@ -19,7 +19,7 @@ Attribute VB_Exposed = False
 Public Sub Init_Progress_Bar()
     With ProgressBar_Form
         .Progress_Frame.Width = 0
-        .Progress_Label.Caption = "0 %"
+        .Progress_Label.Caption = "完成進度 0 %"
         .Show vbModeless
     End With
 End Sub
@@ -30,11 +30,10 @@ Public Sub Set_Progress_Percentage(completePercentage As Double)
     Dim progressBarWidth    As Long
     Dim progressCaption     As String
     
-    progressCaption = CStr(Round(completePercentage * 100, 0)) & " %"
+    progressCaption = "完成進度 " & CStr(Round(completePercentage * 100, 0)) & " %"
     progressBarWidth = Round(completePercentage * ProgressBar_Form.Border_Frame.Width, 0)
         
     ProgressBar_Form.Progress_Label.Caption = progressCaption
     ProgressBar_Form.Progress_Frame.Width = progressBarWidth
-    
-    DoEvents
+
 End Sub

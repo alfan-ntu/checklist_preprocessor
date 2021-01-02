@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} Checklist_Processor_Form 
    Caption         =   "檢核表前處理工具"
-   ClientHeight    =   7692
+   ClientHeight    =   8268.001
    ClientLeft      =   84
    ClientTop       =   360
    ClientWidth     =   11388
@@ -49,7 +49,7 @@ Private Sub Checklist_Folder_Select_Button_Click()
     Call SaveSetting(Constant.ApplicationName, Constant.RegistrySectionName, _
                     Constant.RegistryChecklistFolder, Directory_String)
 
-    Call Utility.Write_Log(Utility.Log_Type_Info, "檢核表資料夾:" & Directory_String, True)
+    Call Utility.Write_Log(Utility.Log_Type_Info, "選取檢核表資料夾:" & Directory_String, True)
     Checklist_Processor_Form.Repaint
     
 End Sub
@@ -69,7 +69,7 @@ Private Sub CSV_Folder_Select_Button_Click()
     Call SaveSetting(Constant.ApplicationName, Constant.RegistrySectionName, _
                     Constant.RegistryCVSOutputFolder, Directory_Setting)
 
-    Call Utility.Write_Log(Utility.Log_Type_Info, "CSV資料夾:" & Directory_String, True)
+    Call Utility.Write_Log(Utility.Log_Type_Info, "選取CSV資料夾:" & Directory_String, True)
     Checklist_Processor_Form.Repaint
 End Sub
 '
@@ -78,6 +78,27 @@ End Sub
 Private Sub Exit_Button_Click()
     Unload Me
     Application.ScreenUpdating = True
+End Sub
+'
+'
+'
+Private Sub Export_Log_Button_Click()
+    Dim LogFileName                                 As String
+    Dim objLogFile                                  As Object       ' A file system object
+    Dim streamLogFile                               As TextStream
+    
+    Set objLogFile = CreateObject("Scripting.FileSystemObject")
+    LogFileName = Checklist_Processor_Form.Checklist_CSV_Folder_TextBox.Text & "\Log_" & Format(Date, "yyyymmdd") & ".txt"
+    Call Utility.Write_Log(Utility.Log_Type_Info, "操作日誌檔案:" & LogFileName, True)
+    If objLogFile.FileExists(LogFileName) Then
+        Set streamLogFile = objLogFile.OpenTextFile(LogFileName, ForAppending, True, TristateTrue)
+    Else
+        Set streamLogFile = objLogFile.CreateTextFile(LogFileName, True, True)
+    End If
+    streamLogFile.Write (Checklist_Processor_Form.Log_TextBox.Text)
+    
+    Set objLogFile = Nothing
+    Set streamLogFile = Nothing
 End Sub
 '
 ' Subject: Generate_CSV_Button_Click() traverses the selected Checklist File Folder, parses each checklist file
@@ -99,34 +120,33 @@ Private Sub Generate_CSV_Button_Click()
     CSVFileName = Checklist_Processor_Form.Checklist_CSV_Folder_TextBox.Text & "\檢核表彙整_" & Format(Date, "yyyymmdd") & ".csv"
     Call Utility.Write_Log(Utility.Log_Type_Info, "CSV 檔案名稱:" & CSVFileName, True)
     If objCSVFile.FileExists(CSVFileName) Then
-        Debug.Print "Target CSV file existis!"
+        Debug.Print "Target CSV file existis! Delete the existed one!"
         Kill CSVFileName
-        ' Set streamCSVFile = objCSVFile.OpenTextFile(CSVFileName, F, True, TristateTrue)
-        Set streamCSVFile = objCSVFile.CreateTextFile(CSVFileName, True, True)
     Else
         Debug.Print "Target CSV file does not exist, create one!"
-        Set streamCSVFile = objCSVFile.CreateTextFile(CSVFileName, True, True)
     End If
+    Set streamCSVFile = objCSVFile.CreateTextFile(CSVFileName, True, True)
     '
     ' Traverse all the checklist Excel files
     '
     If Checklist_Folder_TextBox.Text = "" Then
         MsgBox "請指定檢核表資料夾"
-        Exit Sub
+        GoTo HouseKeeping
     Else
         ExcelFileFolder = Checklist_Folder_TextBox.Text
         recordCount = 0
         totalRecordCount = Utility.Get_Number_Of_Excel_Files(ExcelFileFolder)
-        
         ExcelFile = Dir(ExcelFileFolder & "\*.xls?")
+        If Checklist_Processor_Form.Header_CheckBox.Value = True Then
+            Call Utility.Add_Header_Row(streamCSVFile)
+        End If
         ' Traverses ExcelFileFolder
         Call ProgressBar_Form.Init_Progress_Bar
-        
         Do While ExcelFile <> ""
             Application.ScreenUpdating = False
             Set sourceWorkbook = Workbooks.Open(ExcelFileFolder & "\" & ExcelFile)
             recordCount = recordCount + 1
-            Call Utility.Write_Log(Utility.Log_Type_Info, "檢核表:" & ExcelFile, False)
+            Call Utility.Write_Log(Utility.Log_Type_Info, "匯入檢核表:" & ExcelFile, False)
             Checklist_Processor_Form.Repaint
             Call Utility.Extract_And_Save(ExcelFile, sourceWorkbook, streamCSVFile)
             sourceWorkbook.Close
@@ -141,7 +161,10 @@ Private Sub Generate_CSV_Button_Click()
         Unload ProgressBar_Form
         
         Call Utility.Write_Log(Utility.Log_Type_Info, "總共匯入 " & CStr(recordCount) & " 筆檢核表", False)
+        Call Utility.Write_Log(Utility.Log_Type_Info, "彙總檢核表儲存在:" & CSVFileName, False)
     End If
+
+HouseKeeping:
     Set streamCSVFile = Nothing
     Set objCSVFile = Nothing
 End Sub
